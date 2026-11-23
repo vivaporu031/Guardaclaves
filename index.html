@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; connect-src 'self' https://www.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; img-src 'self' data:; object-src 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0f1b2d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Guardaclaves">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Guardaclaves</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Primera vez -->
+  <section id="view-setup" class="view center" hidden>
+    <div class="brand"><img src="icon-192.png" alt=""><h1>Guardaclaves</h1></div>
+    <p class="muted">Crea tu contraseña maestra. Con ella se cifran todas tus contraseñas en este dispositivo.</p>
+    <form id="form-setup" class="card stack" autocomplete="off">
+      <label>Contraseña maestra
+        <input id="setup-pw" type="password" autocomplete="new-password" required minlength="8">
+      </label>
+      <div class="meter"><div id="setup-meter"></div></div>
+      <small id="setup-meter-label" class="muted">&nbsp;</small>
+      <label>Repítela
+        <input id="setup-pw2" type="password" autocomplete="new-password" required minlength="8">
+      </label>
+      <p class="warn">Si olvidas la contraseña maestra no hay forma de recuperar los datos. Anótala en un lugar seguro.</p>
+      <button class="btn primary" type="submit">Crear y entrar</button>
+    </form>
+    <div class="card stack">
+      <strong>¿Ya tienes un respaldo?</strong>
+      <button class="btn" id="setup-restore-file" type="button">Restaurar desde un archivo</button>
+      <button class="btn" id="setup-restore-drive" type="button">Restaurar desde Google Drive</button>
+      <details>
+        <summary class="muted">ID de cliente de Google</summary>
+        <input id="setup-client-id" type="text" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false" autocapitalize="off">
+      </details>
+    </div>
+  </section>
+
+  <!-- Bloqueado -->
+  <section id="view-lock" class="view center" hidden>
+    <div class="brand"><img src="icon-192.png" alt=""><h1>Guardaclaves</h1></div>
+    <button class="btn primary big" id="lock-bio" type="button" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a9 9 0 0 0-9 9v2M21 13v-2a9 9 0 0 0-14.5-7.1M12 6a5 5 0 0 0-5 5v3c0 2 .5 4 1.5 5.5M17 11v3c0 3-1 5.5-2.5 7.5M12 10v4c0 3-.7 5.5-2 7.5M14.5 21c.3-.5.5-1 .5-1.5"/></svg>
+      Desbloquear con huella
+    </button>
+    <form id="form-lock" class="card stack" autocomplete="off">
+      <label>Contraseña maestra
+        <input id="lock-pw" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn primary" type="submit">Desbloquear</button>
+      <small id="lock-msg" class="error" aria-live="polite"></small>
+    </form>
+  </section>
+
+  <!-- Lista -->
+  <section id="view-list" class="view" hidden>
+    <header class="bar">
+      <h2>Contraseñas</h2>
+      <button class="icon" id="btn-gen" title="Generador" aria-label="Generador"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7M17 14l3 3-3 3"/></svg></button>
+      <button class="icon" id="btn-settings" title="Ajustes" aria-label="Ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      <button class="icon" id="btn-lock" title="Bloquear" aria-label="Bloquear"><svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+    </header>
+    <div class="content">
+      <button id="backup-banner" class="banner" type="button" hidden>Tienes cambios sin respaldar · <u>Respaldar ahora</u></button>
+      <input id="search" type="search" placeholder="Buscar…" autocomplete="off">
+      <ul id="list" class="list"></ul>
+      <p id="empty" class="muted center-text" hidden>Aún no hay contraseñas. Toca <b>+</b> para añadir la primera.</p>
+    </div>
+    <button class="fab" id="btn-add" aria-label="Añadir">+</button>
+  </section>
+
+  <!-- Detalle -->
+  <section id="view-detail" class="view" hidden>
+    <header class="bar">
+      <button class="icon" data-back aria-label="Atrás"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h2 id="detail-title"></h2>
+      <button class="icon" id="detail-edit" aria-label="Editar"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+    </header>
+    <div class="content" id="detail-body"></div>
+  </section>
+
+  <!-- Editar -->
+  <section id="view-edit" class="view" hidden>
+    <header class="bar">
+      <button class="icon" data-back aria-label="Cancelar"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      <h2 id="edit-heading">Nueva</h2>
+    </header>
+    <form id="form-edit" class="content stack" autocomplete="off">
+      <label>Título <input id="e-title" type="text" required maxlength="200"></label>
+      <label>Usuario o correo <input id="e-user" type="text" autocapitalize="off" spellcheck="false" maxlength="500"></label>
+      <label>Contraseña
+        <div class="row">
+          <input id="e-pw" type="password" autocomplete="new-password" spellcheck="false" maxlength="1000">
+          <button class="icon small" type="button" id="e-pw-toggle" aria-label="Mostrar"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+      </label>
+      <div class="meter"><div id="e-meter"></div></div>
+      <div class="row gap">
+        <button class="btn" type="button" id="e-gen">Generar contraseña</button>
+        <button class="btn ghost" type="button" id="e-gen-opts">Opciones…</button>
+      </div>
+      <label>Sitio web <input id="e-url" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="ejemplo.com" maxlength="1000"></label>
+      <label>Notas <textarea id="e-notes" rows="4" maxlength="10000"></textarea></label>
+      <label class="check"><input id="e-fav" type="checkbox"> Favorita (aparece arriba)</label>
+      <button class="btn primary" type="submit">Guardar</button>
+      <button class="btn danger" type="button" id="e-delete" hidden>Eliminar</button>
+    </form>
+  </section>
+
+  <!-- Generador -->
+  <section id="view-gen" class="view" hidden>
+    <header class="bar">
+      <button class="icon" data-back aria-label="Atrás"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h2>Generador</h2>
+    </header>
+    <div class="content stack">
+      <output id="gen-out" class="gen-out"></output>
+      <div class="meter"><div id="gen-meter"></div></div>
+      <label>Longitud: <b id="gen-len-label">20</b>
+        <input id="gen-len" type="range" min="8" max="64" value="20">
+      </label>
+      <label class="check"><input type="checkbox" id="gen-upper" checked> Mayúsculas (A-Z)</label>
+      <label class="check"><input type="checkbox" id="gen-lower" checked> Minúsculas (a-z)</label>
+      <label class="check"><input type="checkbox" id="gen-digits" checked> Números (0-9)</label>
+      <label class="check"><input type="checkbox" id="gen-symbols" checked> Símbolos (!@#…)</label>
+      <label class="check"><input type="checkbox" id="gen-ambig"> Evitar caracteres parecidos (I l 1 O 0)</label>
+      <div class="row gap">
+        <button class="btn" id="gen-again" type="button">Otra</button>
+        <button class="btn" id="gen-copy" type="button">Copiar</button>
+      </div>
+      <button class="btn primary" id="gen-use" type="button" hidden>Usar esta contraseña</button>
+    </div>
+  </section>
+
+  <!-- Ajustes -->
+  <section id="view-settings" class="view" hidden>
+    <header class="bar">
+      <button class="icon" data-back aria-label="Atrás"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <h2>Ajustes</h2>
+    </header>
+    <div class="content stack">
+      <h3>Seguridad</h3>
+      <div class="card stack">
+        <div class="row between"><span>Desbloqueo con huella</span><b id="bio-status" class="muted"></b></div>
+        <button class="btn" id="bio-toggle" type="button"></button>
+        <small id="bio-hint" class="muted"></small>
+      </div>
+      <div class="card stack">
+        <button class="btn" id="change-pw" type="button">Cambiar contraseña maestra</button>
+        <label>Bloqueo automático
+          <select id="set-autolock">
+            <option value="0">Al salir de la app</option>
+            <option value="1">Tras 1 minuto sin uso</option>
+            <option value="5">Tras 5 minutos sin uso</option>
+            <option value="15">Tras 15 minutos sin uso</option>
+          </select>
+        </label>
+        <label>Borrar del portapapeles lo copiado
+          <select id="set-clip">
+            <option value="15">A los 15 segundos</option>
+            <option value="30">A los 30 segundos</option>
+            <option value="60">Al minuto</option>
+            <option value="0">Nunca</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="set-wipe"> Borrar todo tras 10 intentos fallidos (como el BlackBerry)</label>
+      </div>
+
+      <h3>Respaldo</h3>
+      <p id="backup-status" class="muted"></p>
+      <div class="card stack">
+        <strong>Google Drive</strong>
+        <button class="btn primary" id="drive-backup" type="button">Respaldar en Google Drive</button>
+        <button class="btn" id="drive-restore" type="button">Restaurar desde Google Drive</button>
+        <details id="drive-config">
+          <summary class="muted">Configurar conexión con Google</summary>
+          <div class="stack">
+            <label>ID de cliente de Google (OAuth)
+              <input id="set-client-id" type="text" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false" autocapitalize="off">
+            </label>
+            <button class="btn" id="save-client-id" type="button">Guardar ID</button>
+            <small class="muted">Los pasos para obtenerlo están en el archivo LEEME. Solo se hace una vez.</small>
+          </div>
+        </details>
+      </div>
+      <div class="card stack">
+        <strong>Archivo</strong>
+        <button class="btn" id="file-share" type="button">Enviar respaldo (a Drive, correo…)</button>
+        <button class="btn" id="file-download" type="button">Descargar respaldo</button>
+        <button class="btn" id="file-import" type="button">Importar respaldo</button>
+        <small class="muted">El respaldo va cifrado. Para abrirlo se pide la contraseña maestra que tenías al crearlo.</small>
+      </div>
+
+      <h3>Zona peligrosa</h3>
+      <div class="card stack">
+        <button class="btn danger" id="wipe-all" type="button">Borrar todos los datos de este dispositivo</button>
+      </div>
+      <p class="muted center-text">Guardaclaves <span id="version"></span></p>
+    </div>
+  </section>
+</div>
+
+<input type="file" id="file-input" accept=".json,.txt,application/json,text/plain" hidden>
+<div id="modal" class="modal" hidden><div class="modal-box" role="dialog" aria-modal="true"></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js"></script>
+</body>
+</html>
