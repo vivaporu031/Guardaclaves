@@ -6,7 +6,7 @@ Guardaclaves es un gestor de contraseñas parecido al BlackBerry Password Keeper
 - Cifrado AES-256. Las contraseñas solo se guardan **en tu teléfono**; la app no tiene servidor.
 - Generador de contraseñas, buscador y favoritas.
 - Se bloquea sola, borra del portapapeles lo copiado y, si lo activas, lo borra todo tras 10 intentos fallidos.
-- **Respaldo cifrado en Google Drive** (sin configurar nada) o en un archivo.
+- **Respaldo cifrado y automático en Google Drive** (gratis, con Apps Script) o en un archivo.
 
 Para que funcione la huella, la app tiene que estar publicada en una dirección **https**. Lo más sencillo y gratis es GitHub Pages. Este paso se hace una sola vez.
 
@@ -35,21 +35,35 @@ Para que funcione la huella, la app tiene que estar publicada en una dirección 
 > La huella queda registrada solo en ese teléfono. En un teléfono nuevo, restauras el respaldo y la activas otra vez.
 > Necesitas Android con Chrome actualizado, o un iPhone con iOS 18 o superior. Si el teléfono no lo permite, la app lo avisa y sigues entrando con la contraseña maestra.
 
-## 3. Respaldo en Google Drive (gratis, sin Google Cloud)
+## 3. Respaldo automático en Google Drive (gratis, sin Google Cloud)
 
-No tienes que configurar nada. Solo necesitas la app **Google Drive** instalada en el teléfono.
+Usa **Google Apps Script**, que es gratis. Se configura una sola vez, en unos 5 minutos, y conviene hacerlo desde la computadora.
 
-- **Respaldar:** en **Ajustes**, toca **Respaldar en Google Drive**. Se abre el menú de compartir del teléfono: elige **Drive**, después la carpeta, y toca **Guardar**.
-- **Cuándo respaldar:** cuando hay cambios sin respaldar, la lista muestra un aviso amarillo. Tócalo y se abre el mismo menú.
-- El archivo va **cifrado**: aunque alguien entre a tu Drive, no puede leerlo sin tu contraseña maestra.
-- En la PC, el botón descarga el archivo; súbelo a <https://drive.google.com>.
+1. En la app abre **Ajustes › Respaldo automático en Drive (gratis)** y copia tu **clave de enlace**.
+2. Entra en <https://script.google.com> con tu Gmail y toca **Nuevo proyecto**. Ponle de nombre `Guardaclaves respaldos`.
+3. Borra lo que trae el editor y pega todo el contenido del archivo `apps-script/Codigo.gs` de este repositorio.
+4. En la línea `const CLAVE = 'PEGA_AQUI_TU_CLAVE_DE_ENLACE';` reemplaza el texto por tu clave, sin quitar las comillas. Guarda (ícono del disquete).
+5. Arriba, elige la función **autorizar** y toca **Ejecutar**. Google pedirá permiso: **Revisar permisos** › tu cuenta › **Configuración avanzada** › **Ir a Guardaclaves respaldos** › **Permitir**. Es tu propio script.
+6. Toca **Implementar › Nueva implementación** › el engranaje › **Aplicación web**:
+   - Ejecutar como: **Yo**
+   - Quién tiene acceso: **Cualquier usuario**
+   - Toca **Implementar** y copia la **URL de la aplicación web** (termina en `/exec`).
+7. En la app, pega la URL en **Ajustes** y toca **Guardar y probar**. Debe decir *¡Conectado!*
 
-*(Opcional y no necesario: si algún día quieres que el respaldo se guarde en Drive sin pasar por el menú de compartir, se puede conectar con un "ID de cliente" de Google Cloud. No hace falta ni tiene costo dejarlo sin configurar.)*
+Desde ese momento:
+- **Cada vez que agregas o cambias una contraseña, se respalda sola** en tu Drive, en la carpeta *Guardaclaves - respaldos*.
+- Además, si pasa más de un día sin respaldo, se hace uno al abrir la app.
+- Se guarda **una copia por día** y se conservan las últimas 30.
+- Los archivos van **cifrados**: ni Google ni el script pueden leer tus contraseñas.
+- La app no puede trabajar cerrada (ninguna app web puede), pero como las contraseñas solo cambian con la app abierta, nunca queda nada sin respaldar.
+- Si no hay internet, lo intenta otra vez después; mientras tanto ves el aviso amarillo.
+
+**Sin configurar nada:** el botón **Respaldar en Google Drive** abre el menú de compartir del teléfono, eliges **Drive** y lo guardas a mano.
 
 ## 4. Restaurar en otro teléfono
 
 1. Instala la app como en el paso 2.
-2. En la primera pantalla, toca **Restaurar desde Google Drive** y busca el archivo `Guardaclaves-respaldo` en tu Drive (o **Restaurar desde un archivo** si lo tienes en el teléfono).
+2. En la primera pantalla, abre **Opcional: respaldo automático**, pega la URL del script, un espacio y tu clave de enlace, y toca **Restaurar desde Google Drive**. Sin respaldo automático, toca **Restaurar desde un archivo** y elige el archivo en Drive.
 3. Escribe la contraseña maestra que tenías cuando hiciste ese respaldo.
 4. Ve a **Ajustes › Activar huella**.
 
@@ -58,6 +72,19 @@ No tienes que configurar nada. Solo necesitas la app **Google Drive** instalada 
 - **Si olvidas la contraseña maestra, no hay forma de recuperar los datos.** Ni con la huella se puede volver a ponerla; anótala en un lugar seguro.
 - Si cambias la contraseña maestra, haz un respaldo nuevo. Los respaldos viejos se siguen abriendo con la contraseña anterior.
 - Si borras los datos del navegador o desinstalas la app, se borra lo que hay en el teléfono. Por eso conviene respaldar.
+
+## Actualizar la app
+
+Guarda tu **clave de enlace** junto con la contraseña maestra: la necesitas para restaurar desde Drive en otro teléfono.
+
+## Si la huella da error
+
+Si al activarla sale *"An unknown error occurred while talking to the credential manager"*, revisa esto:
+1. **Chrome** y **Servicios de Google Play** actualizados, desde Play Store.
+2. Una **cuenta de Google** iniciada en el teléfono.
+3. Ajustes del teléfono › *Contraseñas y cuentas* (o *Google › Autocompletar*): el **Gestor de contraseñas de Google** activado como servicio preferido.
+4. La **huella configurada** en el bloqueo de pantalla.
+5. La app abierta e instalada desde **Chrome**, no desde el navegador de Honor.
 
 ## Actualizar la app
 

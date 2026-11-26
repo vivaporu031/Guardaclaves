@@ -2,13 +2,13 @@
 /* Guardaclaves — gestor de contraseñas local, cifrado AES-256-GCM.
    Las contraseñas nunca salen del dispositivo sin cifrar. */
 (() => {
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
   const ITERS = 600000;                       // PBKDF2-SHA256
   const DRIVE_NAME = 'Guardaclaves-respaldo.json';
   const te = new TextEncoder(), td = new TextDecoder();
   const AAD_DEK = te.encode('guardaclaves/dek/v1');
   const AAD_VAULT = te.encode('guardaclaves/vault/v1');
-  const DEFAULTS = { autoLock: 5, clipSec: 30, wipeOnFail: false, googleClientId: '',
+  const DEFAULTS = { autoLock: 5, clipSec: 30, wipeOnFail: false, gasUrl: '', gasKey: '',
     gen: { len: 20, upper: true, lower: true, digits: true, symbols: true, ambig: false } };
 
   const $ = (s, r = document) => r.querySelector(s);
@@ -80,7 +80,7 @@
     const box = await seal(S.dek, te.encode(JSON.stringify(S.vault)), AAD_VAULT);
     meta.dirty = true;
     await DB.setMany({ vault: box, meta });
-    updateBanner();
+    updateBanner(); scheduleAuto();
   }
 
   /* ---------- Interfaz básica ---------- */
@@ -228,7 +228,7 @@
     show('lock', false);
     if (!meta?.bio) setTimeout(() => $('#lock-pw').focus(), 50);
   }
-  function enterApp() { history = []; renderList(); show('list', false); bump(); }
+  function enterApp() { history = []; renderList(); show('list', false); bump(); autoOnUnlock(); }
 
   /* ---------- Bloqueo automático ---------- */
   let lastActive = Date.now(), hiddenAt = 0;
@@ -261,13 +261,24 @@
     if (!window.isSecureContext) throw new Error('La huella solo funciona si la app se abre desde una dirección https.');
     if (!await bioAvailable()) throw new Error('Este dispositivo no tiene huella o desbloqueo biométrico disponible para el navegador.');
     const prfSalt = rand(32);
-    const cred = await navigator.credentials.create({ publicKey: {
+    const opts = rk => ({ publicKey: {
       rp: { name: 'Guardaclaves' },
       user: { id: rand(16), name: 'Guardaclaves', displayName: 'Guardaclaves' },
       challenge: rand(32),
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: rk, requireResidentKey: rk === 'required' },
       timeout: 60000, extensions: { prf: { eval: { first: prfSalt } } } } });
+    let cred;
+    try { cred = await navigator.credentials.create(opts('preferred')); }
+    catch (e) {
+      if (e.name === 'NotAllowedError' || e.name === 'AbortError') throw e;
+      // Algunos Android (p. ej. Honor) fallan en el gestor de credenciales con llaves «residentes»: segundo intento.
+      try { cred = await navigator.credentials.create(opts('discouraged')); }
+      catch (e2) {
+        if (e2.name === 'NotAllowedError' || e2.name === 'AbortError') throw e2;
+        throw new Error('El teléfono no pudo registrar la huella (' + (e2.name || 'error') + '). Revisa: 1) Chrome y «Servicios de Google Play» actualizados; 2) una cuenta de Google iniciada en el teléfono; 3) en Ajustes del teléfono › Contraseñas/Autocompletar, el «Gestor de contraseñas de Google» activado; 4) huella configurada en el bloqueo de pantalla. Mientras tanto, entra con la contraseña maestra.');
+      }
+    }
     const ext = cred.getClientExtensionResults();
     if (ext.prf && ext.prf.enabled === false) throw new Error('Este teléfono o navegador no permite usar la huella para cifrar (falta soporte "PRF"). Actualiza el sistema y el navegador.');
     let out = ext.prf?.results?.first;
@@ -436,61 +447,38 @@
   }
   const stamp = () => new Date().toISOString().slice(0, 10);
 
-  /* ---------- Google Drive ---------- */
+  /* ---------- Google Drive vía Apps Script (gratis, sin Google Cloud) ---------- */
+  const GAS_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
   const Drive = {
-    token: null, exp: 0, gisPromise: null,
-    loadGis() {
-      if (window.google?.accounts?.oauth2) return Promise.resolve();
-      if (!this.gisPromise) this.gisPromise = new Promise((res, rej) => {
-        const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
-        s.onload = res; s.onerror = () => { this.gisPromise = null; rej(new Error('No se pudo conectar con Google. Revisa tu internet.')); };
-        document.head.appendChild(s);
-      });
-      return this.gisPromise;
+    async call(payload) {
+      if (!settings.gasUrl) throw new Error('Configura primero el respaldo automático (Ajustes › Respaldo automático en Drive).');
+      let r;
+      try {
+        r = await fetch(settings.gasUrl, { method: 'POST', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ clave: settings.gasKey, ...payload }) });
+      } catch { throw new Error('No hay conexión con Google Drive. Revisa tu internet.'); }
+      let j; try { j = await r.json(); } catch { throw new Error('El script de Google no respondió bien. Revisa que esté implementado con acceso «Cualquier usuario».'); }
+      if (!j.ok) throw new Error(j.error === 'clave' ? 'La clave de enlace no coincide con la del script.' : ('Google Drive: ' + (j.error || 'error desconocido')));
+      return j;
     },
-    async getToken() {
-      if (this.token && Date.now() < this.exp - 60000) return this.token;
-      const cid = settings.googleClientId;
-      if (!cid) throw new Error('Primero configura el ID de cliente de Google (Ajustes › Configurar conexión con Google).');
-      await this.loadGis();
-      return new Promise((res, rej) => {
-        const tc = google.accounts.oauth2.initTokenClient({
-          client_id: cid, scope: 'https://www.googleapis.com/auth/drive.file',
-          callback: r => { if (r.error) return rej(new Error(r.error_description || r.error)); this.token = r.access_token; this.exp = Date.now() + r.expires_in * 1000; res(this.token); },
-          error_callback: e => rej(new Error(e?.type === 'popup_closed' ? 'Se cerró la ventana de Google.' : e?.type === 'popup_failed_to_open' ? 'El navegador bloqueó la ventana de Google. Permite ventanas emergentes e inténtalo otra vez.' : (e?.message || 'No se pudo iniciar sesión en Google.'))),
-        });
-        tc.requestAccessToken({ prompt: '' });
-      });
-    },
-    async api(url, opts = {}) {
-      const token = await this.getToken();
-      const r = await fetch(url, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + token } });
-      if (r.status === 401) { this.token = null; throw new Error('La sesión de Google expiró. Inténtalo otra vez.'); }
-      if (!r.ok) { let m = ''; try { m = (await r.json()).error?.message; } catch {} throw new Error('Google Drive respondió con un error: ' + (m || r.status)); }
-      return r;
-    },
-    async find() {
-      const q = encodeURIComponent(`name='${DRIVE_NAME}' and trashed=false`);
-      const r = await this.api(`https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=modifiedTime desc&fields=files(id,modifiedTime)`);
-      return (await r.json()).files?.[0] || null;
-    },
-    async upload(text) {
-      const f = await this.find();
-      if (f) {
-        await this.api(`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=media`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: text });
-      } else {
-        const bnd = 'gc' + uid();
-        const body = `--${bnd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: DRIVE_NAME, mimeType: 'application/json', description: 'Respaldo cifrado de Guardaclaves' })}\r\n--${bnd}\r\nContent-Type: application/json\r\n\r\n${text}\r\n--${bnd}--`;
-        await this.api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${bnd}` }, body });
-      }
-    },
-    async download() {
-      const f = await this.find();
-      if (!f) throw new Error('No hay ningún respaldo de Guardaclaves en ese Google Drive.');
-      const r = await this.api(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`);
-      return r.text();
-    },
+    async upload(text) { return this.call({ accion: 'guardar', respaldo: text }); },
+    async download() { const j = await this.call({ accion: 'ultimo' }); if (!j.respaldo) throw new Error('Todavía no hay respaldos en Drive.'); return j.respaldo; },
   };
+  let autoTimer = null, autoRunning = false;
+  async function autoBackup(silent = true) {
+    if (!settings.gasUrl || autoRunning) return;
+    autoRunning = true;
+    try { await Drive.upload(await buildBackup()); await markBackedUp('Drive automático'); if (!silent) toast('Respaldo guardado en Google Drive'); }
+    catch (e) { if (silent) toast('No se pudo respaldar en Drive ahora; se intentará más tarde', 3500); else throw e; }
+    finally { autoRunning = false; }
+  }
+  function scheduleAuto() { if (!settings.gasUrl) return; clearTimeout(autoTimer); autoTimer = setTimeout(() => autoBackup(true), 3000); }
+  function autoOnUnlock() {
+    if (!settings.gasUrl || !meta) return;
+    const last = meta.lastBackup?.at || 0;
+    if (meta.dirty || Date.now() - last > 24 * 3600 * 1000) autoBackup(true);
+  }
+
   // Sin Google Cloud: menú de compartir del teléfono (elegir «Drive»)
   async function shareBackup() {
     const text = await buildBackup();
@@ -506,10 +494,8 @@
     }
   }
   async function driveBackup() {
-    if (!settings.googleClientId) return shareBackup();
-    await holding(async () => { await Drive.upload(await buildBackup()); });
-    await markBackedUp('Google Drive');
-    toast('Respaldo guardado en Google Drive');
+    if (!settings.gasUrl) return shareBackup();
+    await autoBackup(false);
   }
 
   /* ---------- Ajustes ---------- */
@@ -517,9 +503,10 @@
     $('#set-autolock').value = String(settings.autoLock);
     $('#set-clip').value = String(settings.clipSec);
     $('#set-wipe').checked = settings.wipeOnFail;
-    $('#set-client-id').value = settings.googleClientId;
-    $('#drive-config').open = false;
-    $('#drive-mode').textContent = settings.googleClientId ? 'Modo automático: se guarda directo en tu Drive.' : 'Se abre el menú de compartir del teléfono: elige «Drive». Para restaurar, busca el archivo en Drive.';
+    if (!settings.gasKey) { settings.gasKey = toB64(rand(18)).replace(/[+/=]/g, ''); await saveSettings(); }
+    $('#set-gas-url').value = settings.gasUrl; $('#gas-key').textContent = settings.gasKey;
+    $('#drive-config').open = !settings.gasUrl;
+    $('#drive-mode').textContent = settings.gasUrl ? 'Automático: cada cambio se respalda solo en tu Drive (una copia por día, se guardan 30 días).' : 'Manual: se abre el menú de compartir del teléfono y eliges «Drive». Para que sea automático, configúralo abajo.';
     $('#version').textContent = 'v' + VERSION;
     const avail = window.isSecureContext && await bioAvailable();
     $('#bio-status').textContent = meta.bio ? 'Activado' : 'Desactivado';
@@ -530,7 +517,6 @@
       : avail ? 'Podrás entrar con tu huella o Face ID. En otro teléfono tendrás que activarla de nuevo.'
       : 'Este dispositivo o navegador no ofrece desbloqueo biométrico.';
     renderBackupStatus();
-    if (settings.googleClientId) Drive.loadGis().catch(() => {});
   }
   function renderBackupStatus() {
     const lb = meta?.lastBackup;
@@ -561,10 +547,13 @@
       }
     }));
     $('#setup-restore-file').addEventListener('click', guard(async () => { const t = await pickFile(); if (t) await restoreFresh(t); }));
-    $('#setup-client-id').addEventListener('change', guard(async () => { settings.googleClientId = $('#setup-client-id').value.trim(); await saveSettings(); Drive.loadGis().catch(() => {}); }));
+    $('#setup-gas').addEventListener('change', guard(async () => {
+      const [u, k] = $('#setup-gas').value.trim().split(/\s+/);
+      settings.gasUrl = u || ''; if (k) settings.gasKey = k; await saveSettings();
+    }));
     $('#setup-restore-drive').addEventListener('click', guard(async () => {
       let t;
-      if (settings.googleClientId) t = await Drive.download();
+      if (settings.gasUrl) t = await Drive.download();
       else { toast('Busca el archivo «Guardaclaves-respaldo» en Drive', 4000); t = await pickFile(); }
       if (t) await restoreFresh(t);
     }));
@@ -649,16 +638,22 @@
       if (e.target.checked && !await confirmBox('Borrado tras 10 intentos', 'Si alguien (o tú) falla la contraseña 10 veces seguidas, se borra todo en este dispositivo. Asegúrate de tener un respaldo.', 'Activar', true)) { e.target.checked = false; return; }
       settings.wipeOnFail = e.target.checked; await saveSettings();
     }));
-    $('#save-client-id').addEventListener('click', guard(async () => {
-      const v = $('#set-client-id').value.trim();
-      if (v && !/\.apps\.googleusercontent\.com$/.test(v)) throw new Error('El ID debe terminar en .apps.googleusercontent.com');
-      settings.googleClientId = v; Drive.token = null; await saveSettings(); toast(v ? 'ID guardado' : 'ID eliminado');
-      if (v) Drive.loadGis().catch(() => {});
+    $('#save-gas').addEventListener('click', guard(async () => {
+      const v = $('#set-gas-url').value.trim();
+      if (v && !GAS_RE.test(v)) throw new Error('La URL debe ser como https://script.google.com/macros/s/…/exec');
+      settings.gasUrl = v; await saveSettings(); renderSettings();
+      if (!v) return toast('Respaldo automático desactivado');
+      toast('Probando conexión…');
+      await autoBackup(false);
+      toast('¡Conectado! El respaldo en Drive ahora es automático', 4000);
     }));
+    $('#copy-gas-key').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(settings.gasKey); toast('Clave copiada'); } catch { toast('No se pudo copiar'); }
+    });
     $('#drive-backup').addEventListener('click', guard(driveBackup));
     $('#drive-restore').addEventListener('click', guard(async () => {
       let t;
-      if (settings.googleClientId) t = await holding(() => Drive.download());
+      if (settings.gasUrl) t = await holding(() => Drive.download());
       else { toast('Busca el archivo «Guardaclaves-respaldo» en Drive', 4000); t = await holding(pickFile); }
       if (t) await restoreInto(t);
     }));
@@ -669,8 +664,8 @@
       const r = await modal({ title: 'Borrar todo', text: 'Se borrarán todas las contraseñas de este dispositivo. Los respaldos en Drive o en archivos no se tocan.\n\nEscribe BORRAR para confirmar.', fields: [{ label: 'Confirmación' }],
         buttons: [{ label: 'Cancelar', value: null }, { label: 'Borrar todo', value: 'ok', primary: true, danger: true }] });
       if (r.button !== 'ok' || r.values[0].trim().toUpperCase() !== 'BORRAR') return;
-      const keepClient = settings.googleClientId;
-      await DB.clear(); settings = { ...DEFAULTS, googleClientId: keepClient }; await saveSettings();
+      const keep = { gasUrl: settings.gasUrl, gasKey: settings.gasKey };
+      await DB.clear(); settings = { ...DEFAULTS, ...keep }; await saveSettings();
       if (S.dekRaw) S.dekRaw.fill(0); S = blankState(); meta = null; history = [];
       show('setup', false); toast('Datos borrados');
     }));
@@ -689,7 +684,7 @@
     settings = { ...DEFAULTS, ...(await DB.get('settings') || {}) };
     settings.gen = { ...DEFAULTS.gen, ...(settings.gen || {}) };
     meta = await DB.get('meta') || null;
-    $('#setup-client-id').value = settings.googleClientId;
+    $('#setup-gas').value = settings.gasUrl ? settings.gasUrl + ' ' + settings.gasKey : '';
     if (meta) showLock(); else show('setup', false);
     if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:')
       navigator.serviceWorker.register('sw.js').catch(() => {});

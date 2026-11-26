@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; connect-src 'self' https://www.googleapis.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; img-src 'self' data:; object-src 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; object-src 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0f1b2d">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -40,8 +40,9 @@
       <button class="btn" id="setup-restore-file" type="button">Restaurar desde un archivo</button>
       <button class="btn" id="setup-restore-drive" type="button">Restaurar desde Google Drive</button>
       <details>
-        <summary class="muted">Opcional: ID de cliente de Google</summary>
-        <input id="setup-client-id" type="text" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false" autocapitalize="off">
+        <summary class="muted">Opcional: respaldo automático (URL y clave)</summary>
+        <input id="setup-gas" type="text" placeholder="https://script.google.com/macros/s/…/exec CLAVE" spellcheck="false" autocapitalize="off">
+        <small class="muted">Pega la URL del script, un espacio y la clave de enlace que usabas.</small>
       </details>
     </div>
   </section>
@@ -184,14 +185,18 @@
         <button class="btn primary" id="drive-backup" type="button">Respaldar en Google Drive</button>
         <button class="btn" id="drive-restore" type="button">Restaurar desde Google Drive</button>
         <details id="drive-config">
-          <summary class="muted">Opcional: conexión automática (Google Cloud)</summary>
+          <summary class="muted">Respaldo automático en Drive (gratis)</summary>
           <div class="stack">
-            <label>ID de cliente de Google (OAuth)
-              <input id="set-client-id" type="text" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false" autocapitalize="off">
+            <small class="muted">Se hace una sola vez con Google Apps Script, sin Google Cloud y sin costo. Sigue el paso 3 del LEEME.</small>
+            <div class="field"><div class="f-text"><div class="f-label">Tu clave de enlace (pégala en el script)</div><div class="f-value mono" id="gas-key"></div></div>
+              <button class="icon small" id="copy-gas-key" type="button" aria-label="Copiar"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>
+            <label>URL de la aplicación web del script
+              <input id="set-gas-url" type="text" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false" autocapitalize="off">
             </label>
-            <button class="btn" id="save-client-id" type="button">Guardar ID</button>
-            <small class="muted">No hace falta. Solo sirve para respaldar sin pasar por el menú de compartir. Déjalo vacío si no quieres usar Google Cloud.</small>
+            <button class="btn" id="save-gas" type="button">Guardar y probar</button>
           </div>
+        </details>
+      </div>
         </details>
       </div>
       <div class="card stack">
