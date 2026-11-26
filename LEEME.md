@@ -72,10 +72,7 @@ Desde ese momento:
 - **Si olvidas la contraseña maestra, no hay forma de recuperar los datos.** Ni con la huella se puede volver a ponerla; anótala en un lugar seguro.
 - Si cambias la contraseña maestra, haz un respaldo nuevo. Los respaldos viejos se siguen abriendo con la contraseña anterior.
 - Si borras los datos del navegador o desinstalas la app, se borra lo que hay en el teléfono. Por eso conviene respaldar.
-
-## Actualizar la app
-
-Guarda tu **clave de enlace** junto con la contraseña maestra: la necesitas para restaurar desde Drive en otro teléfono.
+- Guarda tu **clave de enlace** junto con la contraseña maestra: la necesitas para restaurar desde Drive en otro teléfono.
 
 ## Si la huella da error
 
@@ -88,4 +85,4 @@ Si al activarla sale *"An unknown error occurred while talking to the credential
 
 ## Actualizar la app
 
-Sube los archivos nuevos al repositorio y cambia el número de versión en la primera línea de `sw.js` (por ejemplo `guardaclaves-v1.1.0` › `v1.1.1`). Tus contraseñas no se pierden al actualizar.
+Sube los archivos nuevos al repositorio y cambia el número de versión en la primera línea de `sw.js` (por ejemplo `guardaclaves-v1.2.0` › `v1.2.1`). Tus contraseñas no se pierden al actualizar.
