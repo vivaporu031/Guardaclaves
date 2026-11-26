@@ -2,7 +2,7 @@
 /* Guardaclaves — gestor de contraseñas local, cifrado AES-256-GCM.
    Las contraseñas nunca salen del dispositivo sin cifrar. */
 (() => {
-  const VERSION = '1.2.0';
+  const VERSION = '1.2.1';
   const ITERS = 600000;                       // PBKDF2-SHA256
   const DRIVE_NAME = 'Guardaclaves-respaldo.json';
   const te = new TextEncoder(), td = new TextDecoder();
@@ -456,7 +456,7 @@
       try {
         r = await fetch(settings.gasUrl, { method: 'POST', redirect: 'follow',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ clave: settings.gasKey, ...payload }) });
-      } catch { throw new Error('No hay conexión con Google Drive. Revisa tu internet.'); }
+      } catch { throw new Error(navigator.onLine === false ? 'No hay internet en este momento.' : 'No se pudo conectar con el script de Google. Abre la URL /exec en Chrome: debe decir «receptor de respaldos está activo». Si pide iniciar sesión, cambia el acceso de la implementación a «Cualquier usuario» (sin «con cuenta de Google») y crea una nueva versión.'); }
       let j; try { j = await r.json(); } catch { throw new Error('El script de Google no respondió bien. Revisa que esté implementado con acceso «Cualquier usuario».'); }
       if (!j.ok) throw new Error(j.error === 'clave' ? 'La clave de enlace no coincide con la del script.' : ('Google Drive: ' + (j.error || 'error desconocido')));
       return j;
