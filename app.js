@@ -2,7 +2,7 @@
 /* Guardaclaves — gestor de contraseñas local, cifrado AES-256-GCM.
    Las contraseñas nunca salen del dispositivo sin cifrar. */
 (() => {
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   const ITERS = 600000;                       // PBKDF2-SHA256
   const DRIVE_NAME = 'Guardaclaves-respaldo.json';
   const te = new TextEncoder(), td = new TextDecoder();
@@ -491,7 +491,22 @@
       return r.text();
     },
   };
+  // Sin Google Cloud: menú de compartir del teléfono (elegir «Drive»)
+  async function shareBackup() {
+    const text = await buildBackup();
+    const file = new File([text], `Guardaclaves-respaldo-${stamp()}.txt`, { type: 'text/plain' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      toast('En el menú que se abre, elige «Drive»', 4000);
+      try { await holding(() => navigator.share({ files: [file], title: 'Respaldo de Guardaclaves' })); }
+      catch (e) { if (e.name === 'AbortError') return; throw e; }
+      await markBackedUp('compartido (Drive u otro)'); toast('Respaldo enviado');
+    } else {
+      downloadText(text, `Guardaclaves-respaldo-${stamp()}.json`); await markBackedUp('archivo descargado');
+      toast('Se descargó el archivo. Súbelo a drive.google.com para guardarlo en Drive', 5000);
+    }
+  }
   async function driveBackup() {
+    if (!settings.googleClientId) return shareBackup();
     await holding(async () => { await Drive.upload(await buildBackup()); });
     await markBackedUp('Google Drive');
     toast('Respaldo guardado en Google Drive');
@@ -503,7 +518,8 @@
     $('#set-clip').value = String(settings.clipSec);
     $('#set-wipe').checked = settings.wipeOnFail;
     $('#set-client-id').value = settings.googleClientId;
-    $('#drive-config').open = !settings.googleClientId;
+    $('#drive-config').open = false;
+    $('#drive-mode').textContent = settings.googleClientId ? 'Modo automático: se guarda directo en tu Drive.' : 'Se abre el menú de compartir del teléfono: elige «Drive». Para restaurar, busca el archivo en Drive.';
     $('#version').textContent = 'v' + VERSION;
     const avail = window.isSecureContext && await bioAvailable();
     $('#bio-status').textContent = meta.bio ? 'Activado' : 'Desactivado';
@@ -547,8 +563,10 @@
     $('#setup-restore-file').addEventListener('click', guard(async () => { const t = await pickFile(); if (t) await restoreFresh(t); }));
     $('#setup-client-id').addEventListener('change', guard(async () => { settings.googleClientId = $('#setup-client-id').value.trim(); await saveSettings(); Drive.loadGis().catch(() => {}); }));
     $('#setup-restore-drive').addEventListener('click', guard(async () => {
-      if (!settings.googleClientId) { $('#setup-client-id').closest('details').open = true; return toast('Escribe primero el ID de cliente de Google'); }
-      const t = await Drive.download(); await restoreFresh(t);
+      let t;
+      if (settings.googleClientId) t = await Drive.download();
+      else { toast('Busca el archivo «Guardaclaves-respaldo» en Drive', 4000); t = await pickFile(); }
+      if (t) await restoreFresh(t);
     }));
 
     // Lock
@@ -572,7 +590,7 @@
     $('#btn-gen').addEventListener('click', () => openGen(false));
     $('#btn-settings').addEventListener('click', guard(async () => { await renderSettings(); show('settings'); }));
     $('#backup-banner').addEventListener('click', guard(async () => {
-      if (settings.googleClientId) await driveBackup(); else { await renderSettings(); show('settings'); toast('Elige cómo respaldar'); }
+      await driveBackup();
     }));
     document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', back));
 
@@ -638,16 +656,13 @@
       if (v) Drive.loadGis().catch(() => {});
     }));
     $('#drive-backup').addEventListener('click', guard(driveBackup));
-    $('#drive-restore').addEventListener('click', guard(async () => { const t = await holding(() => Drive.download()); await restoreInto(t); }));
-    $('#file-share').addEventListener('click', guard(async () => {
-      const text = await buildBackup();
-      const file = new File([text], `Guardaclaves-respaldo-${stamp()}.txt`, { type: 'text/plain' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await holding(() => navigator.share({ files: [file], title: 'Respaldo de Guardaclaves' })); }
-        catch (e) { if (e.name === 'AbortError') return; throw e; }
-        await markBackedUp('archivo enviado'); toast('Respaldo enviado');
-      } else { downloadText(text, `Guardaclaves-respaldo-${stamp()}.json`); await markBackedUp('archivo descargado'); toast('Este navegador no permite compartir; se descargó el archivo'); }
+    $('#drive-restore').addEventListener('click', guard(async () => {
+      let t;
+      if (settings.googleClientId) t = await holding(() => Drive.download());
+      else { toast('Busca el archivo «Guardaclaves-respaldo» en Drive', 4000); t = await holding(pickFile); }
+      if (t) await restoreInto(t);
     }));
+    $('#file-share').addEventListener('click', guard(shareBackup));
     $('#file-download').addEventListener('click', guard(async () => { downloadText(await buildBackup(), `Guardaclaves-respaldo-${stamp()}.json`); await markBackedUp('archivo descargado'); toast('Respaldo descargado'); }));
     $('#file-import').addEventListener('click', guard(async () => { const t = await holding(pickFile); if (t) await restoreInto(t); }));
     $('#wipe-all').addEventListener('click', guard(async () => {

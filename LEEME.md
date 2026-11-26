@@ -6,9 +6,9 @@ Guardaclaves es un gestor de contraseñas parecido al BlackBerry Password Keeper
 - Cifrado AES-256. Las contraseñas solo se guardan **en tu teléfono**; la app no tiene servidor.
 - Generador de contraseñas, buscador y favoritas.
 - Se bloquea sola, borra del portapapeles lo copiado y, si lo activas, lo borra todo tras 10 intentos fallidos.
-- **Respaldo cifrado en Google Drive** o en un archivo.
+- **Respaldo cifrado en Google Drive** (sin configurar nada) o en un archivo.
 
-Para que funcionen la huella y Google Drive, la app tiene que estar publicada en una dirección **https**. Lo más sencillo y gratis es GitHub Pages. Este paso se hace una sola vez.
+Para que funcione la huella, la app tiene que estar publicada en una dirección **https**. Lo más sencillo y gratis es GitHub Pages. Este paso se hace una sola vez.
 
 ---
 
@@ -35,36 +35,21 @@ Para que funcionen la huella y Google Drive, la app tiene que estar publicada en
 > La huella queda registrada solo en ese teléfono. En un teléfono nuevo, restauras el respaldo y la activas otra vez.
 > Necesitas Android con Chrome actualizado, o un iPhone con iOS 18 o superior. Si el teléfono no lo permite, la app lo avisa y sigues entrando con la contraseña maestra.
 
-## 3. Conectar Google Drive (una sola vez, unos 10 minutos)
+## 3. Respaldo en Google Drive (gratis, sin Google Cloud)
 
-Google exige que cada app tenga su propio "ID de cliente". Es gratis.
+No tienes que configurar nada. Solo necesitas la app **Google Drive** instalada en el teléfono.
 
-1. Entra en <https://console.cloud.google.com> con tu cuenta de Gmail.
-2. Arriba, en el selector de proyectos: **Proyecto nuevo** › nombre `Guardaclaves` › **Crear**.
-3. Menú › **APIs y servicios › Biblioteca** › busca **Google Drive API** › **Habilitar**.
-4. Menú › **APIs y servicios › Pantalla de consentimiento de OAuth** (en la versión nueva se llama *Google Auth Platform*):
-   - Tipo de usuario: **Externo**. Nombre de la app: `Guardaclaves`. Pon tu correo donde lo pida.
-   - En **Usuarios de prueba** (o *Público › Test users*) añade **tu Gmail**.
-5. Menú › **Credenciales** (o *Clientes*) › **Crear credenciales › ID de cliente de OAuth**:
-   - Tipo de aplicación: **Aplicación web**.
-   - En **Orígenes de JavaScript autorizados** añade: `https://TU-USUARIO.github.io`
-     (sin `/guardaclaves` y sin barra al final).
-   - Toca **Crear** y copia el **ID de cliente**, que termina en `.apps.googleusercontent.com`.
-6. En Guardaclaves: **Ajustes › Configurar conexión con Google**, pega el ID y toca **Guardar ID**.
-7. Toca **Respaldar en Google Drive**. La primera vez Google muestra el aviso *"Google no verificó esta app"*: toca **Continuar**. Es tu propia app.
+- **Respaldar:** en **Ajustes**, toca **Respaldar en Google Drive**. Se abre el menú de compartir del teléfono: elige **Drive**, después la carpeta, y toca **Guardar**.
+- **Cuándo respaldar:** cuando hay cambios sin respaldar, la lista muestra un aviso amarillo. Tócalo y se abre el mismo menú.
+- El archivo va **cifrado**: aunque alguien entre a tu Drive, no puede leerlo sin tu contraseña maestra.
+- En la PC, el botón descarga el archivo; súbelo a <https://drive.google.com>.
 
-Qué hace la app con tu Drive:
-- Solo puede ver los archivos que ella misma crea (permiso `drive.file`). No ve el resto de tu Drive.
-- Guarda un único archivo, `Guardaclaves-respaldo.json`, **cifrado**: sin tu contraseña maestra no se puede abrir.
-- Drive conserva automáticamente las versiones anteriores de ese archivo (clic derecho › *Administrar versiones*).
-- Cuando hay cambios sin respaldar, la lista muestra un aviso amarillo; tócalo para respaldar.
-
-**Sin configurar nada:** en Ajustes, **Enviar respaldo** abre el menú de compartir del teléfono, y ahí puedes elegir **Drive** para guardarlo manualmente.
+*(Opcional y no necesario: si algún día quieres que el respaldo se guarde en Drive sin pasar por el menú de compartir, se puede conectar con un "ID de cliente" de Google Cloud. No hace falta ni tiene costo dejarlo sin configurar.)*
 
 ## 4. Restaurar en otro teléfono
 
 1. Instala la app como en el paso 2.
-2. En la primera pantalla, toca **Restaurar desde Google Drive** (pega antes el ID de cliente en el campo de abajo) o **Restaurar desde un archivo**.
+2. En la primera pantalla, toca **Restaurar desde Google Drive** y busca el archivo `Guardaclaves-respaldo` en tu Drive (o **Restaurar desde un archivo** si lo tienes en el teléfono).
 3. Escribe la contraseña maestra que tenías cuando hiciste ese respaldo.
 4. Ve a **Ajustes › Activar huella**.
 
@@ -76,4 +61,4 @@ Qué hace la app con tu Drive:
 
 ## Actualizar la app
 
-Sube los archivos nuevos al repositorio y cambia el número de versión en la primera línea de `sw.js` (`guardaclaves-v1.0.0` › `v1.0.1`). Tus contraseñas no se pierden al actualizar.
+Sube los archivos nuevos al repositorio y cambia el número de versión en la primera línea de `sw.js` (por ejemplo `guardaclaves-v1.1.0` › `v1.1.1`). Tus contraseñas no se pierden al actualizar.

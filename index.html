@@ -40,7 +40,7 @@
       <button class="btn" id="setup-restore-file" type="button">Restaurar desde un archivo</button>
       <button class="btn" id="setup-restore-drive" type="button">Restaurar desde Google Drive</button>
       <details>
-        <summary class="muted">ID de cliente de Google</summary>
+        <summary class="muted">Opcional: ID de cliente de Google</summary>
         <input id="setup-client-id" type="text" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false" autocapitalize="off">
       </details>
     </div>
@@ -180,22 +180,23 @@
       <p id="backup-status" class="muted"></p>
       <div class="card stack">
         <strong>Google Drive</strong>
+        <small id="drive-mode" class="muted"></small>
         <button class="btn primary" id="drive-backup" type="button">Respaldar en Google Drive</button>
         <button class="btn" id="drive-restore" type="button">Restaurar desde Google Drive</button>
         <details id="drive-config">
-          <summary class="muted">Configurar conexión con Google</summary>
+          <summary class="muted">Opcional: conexión automática (Google Cloud)</summary>
           <div class="stack">
             <label>ID de cliente de Google (OAuth)
               <input id="set-client-id" type="text" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false" autocapitalize="off">
             </label>
             <button class="btn" id="save-client-id" type="button">Guardar ID</button>
-            <small class="muted">Los pasos para obtenerlo están en el archivo LEEME. Solo se hace una vez.</small>
+            <small class="muted">No hace falta. Solo sirve para respaldar sin pasar por el menú de compartir. Déjalo vacío si no quieres usar Google Cloud.</small>
           </div>
         </details>
       </div>
       <div class="card stack">
         <strong>Archivo</strong>
-        <button class="btn" id="file-share" type="button">Enviar respaldo (a Drive, correo…)</button>
+        <button class="btn" id="file-share" type="button">Enviar respaldo (correo, WhatsApp…)</button>
         <button class="btn" id="file-download" type="button">Descargar respaldo</button>
         <button class="btn" id="file-import" type="button">Importar respaldo</button>
         <small class="muted">El respaldo va cifrado. Para abrirlo se pide la contraseña maestra que tenías al crearlo.</small>

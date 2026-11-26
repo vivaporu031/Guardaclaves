@@ -1,5 +1,5 @@
 // Guardaclaves — funciona sin internet. Cambia la versión al actualizar archivos.
-const CACHE = 'guardaclaves-v1.0.0';
+const CACHE = 'guardaclaves-v1.1.0';
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
